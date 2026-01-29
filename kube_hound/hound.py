@@ -207,7 +207,11 @@ class Hound:
         self.analysis_results = self.scheduler.run_analyses(
             self.run_static, self.run_dynamic)
 
-    def show_results(self, json_output=False):
+    def show_results(self, json_output=False, output_file=None):
+        # If output_file is specified, force JSON output
+        if output_file:
+            json_output = True
+            
         if json_output:
             output_obj = []
             for result in self.analysis_results:
@@ -216,7 +220,14 @@ class Hound:
                     'smells': list(map(repr, result.smells_detected)),
                     'description': result.description
                 })
-            print(json.dumps(output_obj))
+            json_str = json.dumps(output_obj, indent=2)
+            
+            if output_file:
+                with open(output_file, 'w') as f:
+                    f.write(json_str)
+                logger.info(f'Results written to {output_file}')
+            else:
+                print(json_str)
         else:
             print('Analysis results:')
             for result in self.analysis_results:

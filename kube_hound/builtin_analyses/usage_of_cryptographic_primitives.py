@@ -66,7 +66,17 @@ class UsageOfCryptographicPrimitives(StaticAnalysis):
                 container_info = self.docker_client.api.inspect_container(sonarqube_container.id)
 
                 # Get the IP address from the container's network settings
-                ip_address = container_info['NetworkSettings']['IPAddress']
+                # Try the legacy IPAddress field first, then fall back to Networks dict
+                ip_address = container_info['NetworkSettings'].get('IPAddress')
+                if not ip_address:
+                    # For Docker bridge networks, IP is in Networks.<network_name>.IPAddress
+                    networks = container_info['NetworkSettings'].get('Networks', {})
+                    for network_name, network_info in networks.items():
+                        ip_address = network_info.get('IPAddress')
+                        if ip_address:
+                            break
+                if not ip_address:
+                    raise RuntimeError("Could not determine SonarQube container IP address")
                 access_address = 'http://' + str(ip_address) + ':9000'
 
                 sonarscanner_container = self.spawn_sonarscanner_container(volumes, access_address, project_key, token)
@@ -88,17 +98,23 @@ class UsageOfCryptographicPrimitives(StaticAnalysis):
             except requests.exceptions.RequestException as e:
                 logger.warning("Error triggering analysis:", e)
         finally:
-            # Stop the container
-            sonarscanner_container.stop()
+            # Stop and remove the sonarscanner container if it was created
+            try:
+                sonarscanner_container.stop()
+                sonarscanner_container.remove()
+            except (NameError, UnboundLocalError):
+                logger.debug("sonarscanner_container was not created")
+            except Exception as e:
+                logger.warning(f"Error stopping sonarscanner container: {e}")
 
-            # Remove the container
-            sonarscanner_container.remove()
-
-            # Stop the container
-            sonarqube_container.stop()
-
-            # Remove the container
-            sonarqube_container.remove()
+            # Stop and remove the sonarqube container
+            try:
+                sonarqube_container.stop()
+                sonarqube_container.remove()
+            except (NameError, UnboundLocalError):
+                logger.debug("sonarqube_container was not created")
+            except Exception as e:
+                logger.warning(f"Error stopping sonarqube container: {e}")
 
         return []
 

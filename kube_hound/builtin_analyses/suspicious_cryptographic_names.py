@@ -100,7 +100,11 @@ class SuspiciousCryptographicNames(StaticAnalysis):
             file_content = file.read()
             fun_var_names = []
             warning_lines = {}
-            tree = ast.parse(file_content)
+            try:
+                tree = ast.parse(file_content)
+            except SyntaxError as e:
+                logger.debug(f"Skipping {type_file}: Python syntax incompatible with current interpreter ({e})")
+                return
 
             for node in ast.walk(tree):
                 if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef) or isinstance(node, ast.ClassDef):

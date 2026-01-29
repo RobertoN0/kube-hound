@@ -21,6 +21,8 @@ def main():
                         help='comma separated list of analysis to run (default all available)')
     parser.add_argument('--json', action='store_true',
                         help='output results in a json object')
+    parser.add_argument('-o', '--output', dest='output_file', default=None,
+                        help='path to output JSON file (implies --json)')
     parser.add_argument('-v', action='store_true',
                         help='verbose output')
     parser.add_argument('-vv', action='store_true',
@@ -61,7 +63,7 @@ def main():
     else:
         hound.run_analyses()
 
-    hound.show_results(json_output=args.json)
+    hound.show_results(json_output=args.json, output_file=args.output_file)
 
 
 if __name__ == '__main__':
